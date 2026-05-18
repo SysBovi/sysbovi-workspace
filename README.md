@@ -1,11 +1,5 @@
 # SYSBOVI - Plataforma de Gestão de Gado de Corte
 
-<p align="center">
-  <img src="https://exemplo.com/logo_unemat.png" alt="Logo UNEMAT" width="100">
-  <br>
-  <strong>Digital Cattle Intelligence</strong>
-</p>
-
 O **SYSBOVI** é uma plataforma **SaaS (Software as a Service)** idealizada para resolver a falta de controle zootécnico e financeiro no manejo de gado de corte. O foco do sistema é transformar a gestão empírica em uma operação baseada em dados, proporcionando previsibilidade financeira e otimização do lucro para pequenos e médios produtores.
 
 ## 📌 Visão Geral
@@ -62,5 +56,4 @@ Projeto desenvolvido para a disciplina de Desenvolvimento de Sistemas Web - UNEM
 *   **Paula Martins Stolberg Fernandes**
 
 ---
-**Docente:** Prof. Esp. Marlon Vinicius da Silva.
-**Versão:** 1.0 (Março/2026).
+**Versão:** 1.0 (2026).
