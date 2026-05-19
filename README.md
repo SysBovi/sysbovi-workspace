@@ -5,6 +5,15 @@ O **SYSBOVI** é uma plataforma **SaaS (Software as a Service)** idealizada para
 ## 📌 Visão Geral
 O sistema gerencia o ciclo completo do gado, desde o desmame até o abate, oferecendo uma solução **Mobile-First** que elimina a dependência de cadernos de papel e planilhas complexas.
 
+## SysBovi Workspace
+
+Monorepo para a gestão do ecossistema SysBovi.
+
+## Projetos
+- `/sysbovi-pwa`: Aplicativo móvel para os pecuaristas (React/Next.js/WatermelonDB)
+- `/sysbovi-api`: API Backend (NestJS/TypeORM/PostgreSQL/Redis)
+- `/sysbovi-admin-web`: Painel administrativo Web (Next.js)
+
 ### Principais Diferenciais:
 *   **Módulo AvaliaVenda:** Algoritmo que cruza dados de peso e custos para indicar o momento mais lucrativo para a venda.
 *   **Gestão de Infraestrutura:** Controle de rodízio de pasto para evitar a degradação e superlotação.
