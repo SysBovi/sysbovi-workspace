@@ -1,0 +1,4 @@
+# Define os donos das aprovações de código
+/sysbovi-pwa/      @frontend-sysbovi
+/sysbovi-api/      @backend-sysbovi
+/sysbovi-admin-web/ @frontend-sysbovi
