@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Bovino } from '../../database/entities/bovino.entity';
+import { Bovino, StatusBovino } from '../../database/entities/bovino.entity';
 import { Insumo } from '../../database/entities/insumo.entity';
-import { LotePasto } from '../../database/entities/lote-pasto.entity';
+import { LotePasto, StatusOcupacao } from '../../database/entities/lote-pasto.entity';
+import { RedisService } from '../../redis/redis.service';
+
+const STATS_CACHE_TTL = 30;
 
 @Injectable()
 export class DashboardService {
@@ -14,11 +17,22 @@ export class DashboardService {
     private insumosRepository: Repository<Insumo>,
     @InjectRepository(LotePasto)
     private lotesRepository: Repository<LotePasto>,
+    private redisService: RedisService,
   ) {}
 
   async getStats(tenantId: string) {
+    const cacheKey = `stats:${tenantId}`;
+    const cached = await this.redisService.get(cacheKey);
+    if (cached) return JSON.parse(cached);
+
+    const result = await this.computeStats(tenantId);
+    await this.redisService.set(cacheKey, JSON.stringify(result), STATS_CACHE_TTL);
+    return result;
+  }
+
+  private async computeStats(tenantId: string) {
     const [totalCabecas, insumosEmAlerta, pastosSuperlotados, mediaPesoGmd] = await Promise.all([
-      this.bovinosRepository.count({ where: { tenantId, status: 'ATIVO' } }),
+      this.bovinosRepository.count({ where: { tenantId, status: StatusBovino.ATIVO } }),
 
       this.insumosRepository
         .createQueryBuilder('insumo')
@@ -27,7 +41,7 @@ export class DashboardService {
         .andWhere('insumo.quantidadeAtual < insumo.nivelMinimo')
         .getCount(),
 
-      this.lotesRepository.count({ where: { tenantId, statusOcupacao: 'SUPERLOTADO' } }),
+      this.lotesRepository.count({ where: { tenantId, statusOcupacao: StatusOcupacao.SUPERLOTADO } }),
 
       this.bovinosRepository
         .createQueryBuilder('bovino')

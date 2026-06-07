@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { differenceInDays } from '../../common/utils/date.util';
 import { Pesagem } from '../../database/entities/pesagem.entity';
+import { RedisService } from '../../redis/redis.service';
 import { CreatePesagemDto } from './dto/create-pesagem.dto';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class PesagensService {
   constructor(
     @InjectRepository(Pesagem)
     private pesagensRepository: Repository<Pesagem>,
+    private redisService: RedisService,
   ) {}
 
   async findByBovino(bovinoId: string, tenantId: string) {
@@ -43,6 +45,8 @@ export class PesagensService {
       gmdCalculado,
     });
 
-    return this.pesagensRepository.save(pesagem);
+    const saved = await this.pesagensRepository.save(pesagem);
+    await this.redisService.del(`stats:${tenantId}`);
+    return saved;
   }
 }

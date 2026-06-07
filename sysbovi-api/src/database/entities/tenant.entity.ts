@@ -2,6 +2,12 @@ import {
   Column, CreateDateColumn, Entity,
   JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn,
 } from 'typeorm';
+
+export enum StatusConta {
+  ATIVA        = 'ATIVA',
+  INADIMPLENTE = 'INADIMPLENTE',
+  BLOQUEADA    = 'BLOQUEADA',
+}
 import { PlanoAssinatura } from './plano-assinatura.entity';
 import { Usuario } from './usuario.entity';
 import { LotePasto } from './lote-pasto.entity';
@@ -24,7 +30,7 @@ export class Tenant {
     length: 20,
     default: 'ATIVA',
   })
-  statusConta: 'ATIVA' | 'INADIMPLENTE' | 'BLOQUEADA';
+  statusConta: StatusConta;
 
   @Column({ name: 'regiao_cotacao', type: 'varchar', length: 50, default: 'SP' })
   regiaoCotacao: string;

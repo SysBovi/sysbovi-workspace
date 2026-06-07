@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { LotePasto } from '../../database/entities/lote-pasto.entity';
+import { LotePasto, StatusOcupacao } from '../../database/entities/lote-pasto.entity';
+import { CustoDiariaHistorico } from '../../database/entities/custo-diaria-historico.entity';
 import { CreateLotePastoDto } from './dto/create-lote-pasto.dto';
 import { RegistrarRodizioDto, UpdateLotePastoDto } from './dto/update-lote-pasto.dto';
 
@@ -10,6 +11,8 @@ export class LotesPastosService {
   constructor(
     @InjectRepository(LotePasto)
     private lotesRepository: Repository<LotePasto>,
+    @InjectRepository(CustoDiariaHistorico)
+    private custoDiariaRepository: Repository<CustoDiariaHistorico>,
   ) {}
 
   async findAll(tenantId: string) {
@@ -70,6 +73,22 @@ export class LotesPastosService {
     return this.lotesRepository.remove(lote);
   }
 
+  async getCustoDiario(loteId: string, tenantId: string): Promise<number | null> {
+    const registro = await this.custoDiariaRepository.findOne({
+      where: { loteId, tenantId },
+      order: { dataVigencia: 'DESC' },
+    });
+    return registro ? Number(registro.valorDiaria) : null;
+  }
+
+  async setCustoDiario(loteId: string, valorDiaria: number, tenantId: string): Promise<{ valorDiaria: number }> {
+    const lote = await this.lotesRepository.findOne({ where: { id: loteId, tenantId } });
+    if (!lote) throw new NotFoundException('Pasto não encontrado.');
+    const registro = this.custoDiariaRepository.create({ loteId, tenantId, valorDiaria });
+    await this.custoDiariaRepository.save(registro);
+    return { valorDiaria };
+  }
+
   async atualizarStatusOcupacao(loteId: string) {
     const result = await this.lotesRepository
       .createQueryBuilder('lote')
@@ -83,7 +102,7 @@ export class LotesPastosService {
 
     const lote = result.entities[0];
     const ocupacao = parseInt(result.raw[0]?.ocupacao ?? '0');
-    lote.statusOcupacao = ocupacao >= lote.capacidade ? 'SUPERLOTADO' : 'NORMAL';
+    lote.statusOcupacao = ocupacao >= lote.capacidade ? StatusOcupacao.SUPERLOTADO : StatusOcupacao.NORMAL;
     await this.lotesRepository.save(lote);
   }
 }

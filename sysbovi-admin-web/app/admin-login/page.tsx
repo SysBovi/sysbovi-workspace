@@ -68,10 +68,11 @@ export default function AdminLogin() {
 
           {/* Email */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Email</label>
+            <label htmlFor="admin-email" className="text-sm font-medium">Email</label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
+                id="admin-email"
                 type="email"
                 placeholder="admin@sysbovi.com"
                 value={email}
@@ -84,10 +85,11 @@ export default function AdminLogin() {
 
           {/* Password */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Senha</label>
+            <label htmlFor="admin-password" className="text-sm font-medium">Senha</label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
+                id="admin-password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Sua senha"
                 value={password}

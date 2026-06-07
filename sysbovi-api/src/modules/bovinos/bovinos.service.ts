@@ -2,11 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { differenceInMonths } from '../../common/utils/date.util';
-import { Bovino } from '../../database/entities/bovino.entity';
+import { Bovino, StatusBovino } from '../../database/entities/bovino.entity';
 import { LotesPastosService } from '../lotes-pastos/lotes-pastos.service';
 import { PesagensService } from '../pesagens/pesagens.service';
+import { RedisService } from '../../redis/redis.service';
 import { CreateBovinoDto } from './dto/create-bovino.dto';
 import { UpdateBovinoDto } from './dto/update-bovino.dto';
+import { MotivoRemocao } from './dto/remover-bovino.dto';
 
 @Injectable()
 export class BovinosService {
@@ -15,6 +17,7 @@ export class BovinosService {
     private bovinosRepository: Repository<Bovino>,
     private lotesPastosService: LotesPastosService,
     private pesagensService: PesagensService,
+    private redisService: RedisService,
   ) {}
 
   private buildListQuery(tenantId: string) {
@@ -41,6 +44,7 @@ export class BovinosService {
 
   async findAll(tenantId: string) {
     const { entities, raw } = await this.buildListQuery(tenantId)
+      .andWhere('bovino.status = :status', { status: StatusBovino.ATIVO })
       .orderBy('bovino.brinco', 'ASC')
       .getRawAndEntities();
 
@@ -93,6 +97,26 @@ export class BovinosService {
     }
 
     return this.findOne(id, tenantId);
+  }
+
+  async remover(id: string, motivo: MotivoRemocao, tenantId: string): Promise<void> {
+    const bovino = await this.bovinosRepository.findOne({
+      where: { id, tenantId, status: StatusBovino.ATIVO },
+    });
+
+    if (!bovino) throw new NotFoundException('Animal não encontrado ou já removido do rebanho.');
+
+    const loteAnterior = bovino.loteId;
+
+    bovino.status = motivo as unknown as StatusBovino;
+    bovino.loteId = null;
+    await this.bovinosRepository.save(bovino);
+
+    if (loteAnterior) {
+      await this.lotesPastosService.atualizarStatusOcupacao(loteAnterior);
+    }
+
+    await this.redisService.del(`stats:${tenantId}`);
   }
 
   private mapBovinoResponse(bovino: Bovino, raw: any) {

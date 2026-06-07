@@ -2,13 +2,18 @@
 
 import { useState, useEffect } from "react"
 import { useData } from "@/lib/data-context"
+import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Empty } from "@/components/ui/empty"
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog"
+import { Spinner } from "@/components/ui/spinner"
+import { toast } from "sonner"
 import Link from "next/link"
-import { Search, Plus, Pencil, Beef, ChevronRight, Truck } from "lucide-react"
+import { Search, Plus, Pencil, Beef, ChevronRight, Truck, Trash2 } from "lucide-react"
+import type { Bovino } from "@/lib/data-context"
 
 function BovinoCardSkeleton() {
   return (
@@ -27,11 +32,47 @@ function BovinoCardSkeleton() {
   )
 }
 
+const MOTIVO_LABEL: Record<string, string> = {
+  INATIVO:  "Inativar",
+  VENDIDO:  "Marcar como Vendido",
+  MORTO:    "Registrar Óbito",
+}
+
+const MOTIVO_DESCRIPTION: Record<string, string> = {
+  INATIVO: "O animal será arquivado e removido do rebanho ativo.",
+  VENDIDO: "O animal será marcado como vendido e removido do rebanho ativo.",
+  MORTO:   "O animal será registrado como óbito e removido do rebanho ativo.",
+}
+
 export default function RebanhoPage() {
-  const { bovinos } = useData()
+  const { bovinos, removerBovino } = useData()
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState("todos")
+
+  // Remoção
+  const [bovinoParaRemover, setBovinoParaRemover] = useState<Bovino | null>(null)
+  const [motivoRemocao, setMotivoRemocao] = useState<'INATIVO' | 'VENDIDO' | 'MORTO'>('INATIVO')
+  const [removendo, setRemovendo] = useState(false)
+
+  const podeRemover = user?.role === 'UP' || user?.role === 'UE'
+
+  async function handleConfirmarRemocao() {
+    if (!bovinoParaRemover) return
+    setRemovendo(true)
+    try {
+      await removerBovino(bovinoParaRemover.id, motivoRemocao)
+      toast.success(`${bovinoParaRemover.brinco} removido do rebanho`, {
+        description: MOTIVO_LABEL[motivoRemocao],
+      })
+      setBovinoParaRemover(null)
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao remover animal")
+    } finally {
+      setRemovendo(false)
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setIsLoading(false), 600)
@@ -151,6 +192,18 @@ export default function RebanhoPage() {
                       <Pencil className="w-5 h-5" />
                       <span className="sr-only">Editar</span>
                     </Link>
+                    {podeRemover && (
+                      <button
+                        onClick={() => {
+                          setBovinoParaRemover(bovino)
+                          setMotivoRemocao('INATIVO')
+                        }}
+                        className="h-12 w-12 rounded-xl border border-destructive/30 flex items-center justify-center hover:bg-destructive/10 text-destructive transition-colors"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        <span className="sr-only">Remover</span>
+                      </button>
+                    )}
                     <Link href={`/rebanho/${bovino.id}`}>
                       <ChevronRight className="w-5 h-5 text-muted-foreground" />
                     </Link>
@@ -161,6 +214,48 @@ export default function RebanhoPage() {
           ))}
         </div>
       )}
+
+      {/* Dialog de confirmação de remoção */}
+      <AlertDialog open={!!bovinoParaRemover} onOpenChange={open => { if (!open) setBovinoParaRemover(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover {bovinoParaRemover?.brinco} do rebanho</AlertDialogTitle>
+            <AlertDialogDescription>
+              Selecione o motivo da remoção. O histórico de pesagens e custos será preservado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="flex flex-col gap-2 py-2">
+            {(['INATIVO', 'VENDIDO', 'MORTO'] as const).map(motivo => (
+              <button
+                key={motivo}
+                onClick={() => setMotivoRemocao(motivo)}
+                className={`flex flex-col items-start p-3 rounded-lg border text-left transition-colors ${
+                  motivoRemocao === motivo
+                    ? 'border-destructive bg-destructive/5'
+                    : 'border-border hover:bg-accent'
+                }`}
+              >
+                <span className={`font-medium text-sm ${motivoRemocao === motivo ? 'text-destructive' : 'text-foreground'}`}>
+                  {MOTIVO_LABEL[motivo]}
+                </span>
+                <span className="text-xs text-muted-foreground mt-0.5">{MOTIVO_DESCRIPTION[motivo]}</span>
+              </button>
+            ))}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={removendo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmarRemocao}
+              disabled={removendo}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {removendo ? <><Spinner className="w-4 h-4 mr-1" />Removendo...</> : 'Confirmar remoção'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

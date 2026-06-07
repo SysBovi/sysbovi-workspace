@@ -1,10 +1,15 @@
 import {
-  Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn,
+  Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique,
 } from 'typeorm';
 import { Tenant } from './tenant.entity';
 
-export type PapelUsuario = 'ADMIN_FAZENDA' | 'ESPECIALISTA' | 'COMUM';
+export enum PapelUsuario {
+  ADMIN_FAZENDA = 'ADMIN_FAZENDA',
+  ESPECIALISTA  = 'ESPECIALISTA',
+  COMUM         = 'COMUM',
+}
 
+@Unique(['tenantId', 'email'])
 @Entity('usuarios')
 export class Usuario {
   @PrimaryGeneratedColumn('uuid')
@@ -16,7 +21,7 @@ export class Usuario {
   @Column({ type: 'varchar', length: 100 })
   nome: string;
 
-  @Column({ type: 'varchar', length: 150, unique: true })
+  @Column({ type: 'varchar', length: 150 })
   email: string;
 
   @Column({ name: 'senha_hash', type: 'varchar', length: 255, select: false })

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { LotesPastosModule } from './modules/lotes-pastos/lotes-pastos.module';
@@ -10,6 +11,7 @@ import { InsumosModule } from './modules/insumos/insumos.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AvaliaVendaModule } from './modules/avalia-venda/avalia-venda.module';
 import { BackofficeModule } from './modules/backoffice/backoffice.module';
+import { EquipeModule } from './modules/equipe/equipe.module';
 
 @Module({
   imports: [
@@ -32,6 +34,7 @@ import { BackofficeModule } from './modules/backoffice/backoffice.module';
       }),
     }),
 
+    RedisModule,
     AuthModule,
     TenantsModule,
     LotesPastosModule,
@@ -41,6 +44,7 @@ import { BackofficeModule } from './modules/backoffice/backoffice.module';
     DashboardModule,
     AvaliaVendaModule,
     BackofficeModule,
+    EquipeModule,
   ],
 })
 export class AppModule {}

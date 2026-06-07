@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Tenant } from '../../database/entities/tenant.entity';
-import { FaturaSaas } from '../../database/entities/fatura-saas.entity';
+import { Tenant, StatusConta } from '../../database/entities/tenant.entity';
+import { FaturaSaas, StatusPagamento } from '../../database/entities/fatura-saas.entity';
 import { LogAuditoria } from '../../database/entities/log-auditoria.entity';
 import { AtualizarFaturaDto } from './dto/atualizar-fatura.dto';
 
@@ -42,13 +42,19 @@ export class BackofficeService {
 
     await this.faturasRepository.save(fatura);
 
-    if (dto.statusPagamento === 'ATRASADO') {
-      await this.tenantsRepository.update(fatura.tenantId, { statusConta: 'INADIMPLENTE' });
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    if (
+      dto.statusPagamento === StatusPagamento.ATRASADO &&
+      new Date(fatura.dataVencimento) < hoje
+    ) {
+      await this.tenantsRepository.update(fatura.tenantId, { statusConta: StatusConta.INADIMPLENTE });
       await this.registrarLog(fatura.tenantId, 'BLOQUEIO_AUTOMATICO', `Fatura ${id} vencida.`);
     }
 
-    if (dto.statusPagamento === 'PAGO' && statusAnterior === 'ATRASADO') {
-      await this.tenantsRepository.update(fatura.tenantId, { statusConta: 'ATIVA' });
+    if (dto.statusPagamento === StatusPagamento.PAGO && statusAnterior === StatusPagamento.ATRASADO) {
+      await this.tenantsRepository.update(fatura.tenantId, { statusConta: StatusConta.ATIVA });
       await this.registrarLog(fatura.tenantId, 'REATIVACAO_AUTOMATICA', `Fatura ${id} paga.`);
     }
 
@@ -63,14 +69,14 @@ export class BackofficeService {
   async getDashboard() {
     const [totalTenants, ativos, inadimplentes] = await Promise.all([
       this.tenantsRepository.count(),
-      this.tenantsRepository.count({ where: { statusConta: 'ATIVA' } }),
-      this.tenantsRepository.count({ where: { statusConta: 'INADIMPLENTE' } }),
+      this.tenantsRepository.count({ where: { statusConta: StatusConta.ATIVA } }),
+      this.tenantsRepository.count({ where: { statusConta: StatusConta.INADIMPLENTE } }),
     ]);
 
     const mrr = await this.tenantsRepository
       .createQueryBuilder('tenant')
       .leftJoin('tenant.plano', 'plano')
-      .addSelect('SUM(plano.precoMensal)', 'mrr')
+      .select('SUM(plano.preco_mensal)', 'mrr')
       .where('tenant.statusConta = :status', { status: 'ATIVA' })
       .getRawOne();
 
@@ -80,6 +86,22 @@ export class BackofficeService {
       inadimplentes,
       mrr: parseFloat(mrr?.mrr ?? '0'),
     };
+  }
+
+  async atualizarPlanoTenant(id: string, planoId: number) {
+    const tenant = await this.tenantsRepository.findOne({ where: { id }, relations: ['plano'] });
+    if (!tenant) throw new NotFoundException('Tenant não encontrado.');
+    await this.tenantsRepository.update(id, { planoId });
+    await this.registrarLog(id, 'PLANO_ALTERADO', `Plano alterado para ID ${planoId}.`);
+    return this.tenantsRepository.findOne({ where: { id }, relations: ['plano'] });
+  }
+
+  async atualizarStatusTenant(id: string, statusConta: StatusConta) {
+    const tenant = await this.tenantsRepository.findOne({ where: { id }, relations: ['plano'] });
+    if (!tenant) throw new NotFoundException('Tenant não encontrado.');
+    await this.tenantsRepository.update(id, { statusConta });
+    await this.registrarLog(id, 'STATUS_ALTERADO_MANUAL', `Status alterado para ${statusConta}.`);
+    return { ...tenant, statusConta };
   }
 
   private async registrarLog(tenantId: string, acao: string, detalhes: string) {

@@ -2,22 +2,18 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/lib/auth-context"
 import { Beef } from "lucide-react"
 
 export default function Home() {
   const router = useRouter()
+  const { user, isLoading } = useAuth()
 
   useEffect(() => {
-    // Verifica se tem usuario logado
-    const savedUser = localStorage.getItem("sysbovi_user")
-    if (savedUser) {
-      router.replace("/home")
-    } else {
-      router.replace("/login")
-    }
-  }, [router])
+    if (isLoading) return
+    router.replace(user ? "/home" : "/login")
+  }, [user, isLoading, router])
 
-  // Tela de splash enquanto redireciona
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-linear-to-b from-primary/10 to-background">
       <div className="w-24 h-24 rounded-3xl bg-primary flex items-center justify-center shadow-xl animate-pulse">

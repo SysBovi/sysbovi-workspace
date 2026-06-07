@@ -4,9 +4,22 @@ import {
 import { Tenant } from './tenant.entity';
 import { Bovino } from './bovino.entity';
 
-export type MetodoCriacao = 'LIVRE_PASTO' | 'SEMI_CONFINADO' | 'CONFINADO';
-export type StatusOcupacao = 'NORMAL' | 'SUPERLOTADO';
-export type AlertaMassaForrageira = 'NORMAL' | 'BAIXA' | 'CRITICA';
+export enum MetodoCriacao {
+  LIVRE_PASTO    = 'LIVRE_PASTO',
+  SEMI_CONFINADO = 'SEMI_CONFINADO',
+  CONFINADO      = 'CONFINADO',
+}
+
+export enum StatusOcupacao {
+  NORMAL      = 'NORMAL',
+  SUPERLOTADO = 'SUPERLOTADO',
+}
+
+export enum AlertaMassaForrageira {
+  NORMAL = 'NORMAL',
+  BAIXA  = 'BAIXA',
+  CRITICA = 'CRITICA',
+}
 
 @Entity('lotes_pastos')
 export class LotePasto {

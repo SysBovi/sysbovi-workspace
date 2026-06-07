@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Insumo, StatusInsumo } from '../../database/entities/insumo.entity';
 import { UsoInsumo } from '../../database/entities/uso-insumo.entity';
-import { Bovino } from '../../database/entities/bovino.entity';
+import { Bovino, StatusBovino } from '../../database/entities/bovino.entity';
 import { LotePasto } from '../../database/entities/lote-pasto.entity';
 import { CreateInsumoDto } from './dto/create-insumo.dto';
 import { UpdateInsumoDto } from './dto/update-insumo.dto';
@@ -133,7 +133,7 @@ export class InsumosService {
       const custoTotal = dto.quantidadeUtilizada * Number(insumo.custoUnitario);
 
       const bovinos = await manager.find(Bovino, {
-        where: { loteId: dto.loteId, tenantId, status: 'ATIVO' },
+        where: { loteId: dto.loteId, tenantId, status: StatusBovino.ATIVO },
       });
 
       if (bovinos.length > 0) {

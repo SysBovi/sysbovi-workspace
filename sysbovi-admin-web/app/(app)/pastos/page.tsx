@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/dialog"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "sonner"
-import { MapPin, AlertTriangle, Users, Calendar, Maximize, Plus, Pencil, Trash2 } from "lucide-react"
+import { MapPin, AlertTriangle, Users, Calendar, Maximize, Plus, Pencil, Trash2, DollarSign } from "lucide-react"
 import type { Pasto } from "@/lib/data-context"
 
 const EMPTY_FORM = { nome: "", area: "", capacidade: "", diasDescanso: "30" }
 
 export default function PastosPage() {
-  const { pastos, addPasto, updatePasto, removePasto } = useData()
+  const { pastos, addPasto, updatePasto, removePasto, setCustoDiarioPasto, getCustoDiarioPasto } = useData()
   const [isLoading, setIsLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -29,6 +29,12 @@ export default function PastosPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Custo diário
+  const [custoPastoId, setCustoPastoId] = useState<string | null>(null)
+  const [custoValor, setCustoValor] = useState("")
+  const [salvandoCusto, setSalvandoCusto] = useState(false)
+  const [custosMap, setCustosMap] = useState<Record<string, number | null>>({})
+
   const [deleteTarget, setDeleteTarget] = useState<Pasto | null>(null)
   const [deleting, setDeleting] = useState(false)
 
@@ -36,6 +42,36 @@ export default function PastosPage() {
     const t = setTimeout(() => setIsLoading(false), 500)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    if (pastos.length === 0) return
+    Promise.all(pastos.map(p => getCustoDiarioPasto(p.id).then(v => ({ id: p.id, v })).catch(() => ({ id: p.id, v: null }))))
+      .then(results => {
+        const map: Record<string, number | null> = {}
+        results.forEach(r => { map[r.id] = r.v })
+        setCustosMap(map)
+      })
+  }, [pastos.length])
+
+  async function handleSalvarCusto() {
+    if (!custoPastoId || !custoValor || Number(custoValor) < 0) return
+    setSalvandoCusto(true)
+    try {
+      const valorSalvo = await setCustoDiarioPasto(custoPastoId, Number(custoValor))
+      setCustosMap(prev => ({ ...prev, [custoPastoId]: valorSalvo }))
+      toast.success("Custo diário atualizado!", {
+        description: `R$ ${valorSalvo.toFixed(2)}/cabeça/dia`,
+      })
+      setCustoPastoId(null)
+      setCustoValor("")
+    } catch (e: any) {
+      toast.error("Erro ao salvar custo diário", {
+        description: e?.message ?? "Verifique sua conexão e tente novamente",
+      })
+    } finally {
+      setSalvandoCusto(false)
+    }
+  }
 
   const superlotados = pastos.filter(p => p.status === "Superlotado")
   const disponiveis  = pastos.filter(p => p.status === "Disponível")
@@ -274,10 +310,31 @@ export default function PastosPage() {
                     <div className="flex items-center gap-2 text-muted-foreground"><Maximize className="w-4 h-4" /><span>{pasto.area} ha</span></div>
                     <div className="flex items-center gap-2 text-muted-foreground"><Calendar className="w-4 h-4" /><span>{pasto.diasDescanso}d descanso</span></div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-border">
+                  <div className="mt-3 pt-3 border-t border-border space-y-2">
                     <p className="text-xs text-muted-foreground">
                       Último rodízio: {pasto.ultimoRodizio ? new Date(pasto.ultimoRodizio).toLocaleDateString("pt-BR") : "Não registrado"}
                     </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
+                        {custosMap[pasto.id] != null ? (
+                          <span className="text-sm font-semibold text-foreground">
+                            R$ {Number(custosMap[pasto.id]).toFixed(2)}
+                            <span className="text-xs font-normal text-muted-foreground">/cab/dia</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs text-warning-foreground font-medium bg-warning/10 px-2 py-0.5 rounded-full">
+                            Custo não definido
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => { setCustoPastoId(pasto.id); setCustoValor(custosMap[pasto.id] != null ? String(custosMap[pasto.id]) : "") }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Editar
+                      </button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -362,6 +419,35 @@ export default function PastosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog custo diário */}
+      <Dialog open={!!custoPastoId} onOpenChange={open => { if (!open) setCustoPastoId(null) }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><DollarSign className="w-5 h-5 text-primary" />Custo Diário por Cabeça</DialogTitle>
+            <DialogDescription>Informe o custo médio diário por animal neste pasto (R$/cabeça/dia).</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 px-1">
+            <label className="text-sm font-medium text-foreground">Valor (R$/cabeça/dia)</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={custoValor}
+              onChange={e => setCustoValor(e.target.value)}
+              placeholder="Ex: 4.50"
+              className="mt-1.5 h-14 text-xl font-bold text-center"
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <button onClick={() => setCustoPastoId(null)} className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium border border-border bg-background hover:bg-accent transition-colors">Cancelar</button>
+            <button onClick={handleSalvarCusto} disabled={!custoValor || salvandoCusto} className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              {salvandoCusto ? <><Spinner className="w-4 h-4 mr-1" />Salvando...</> : "Salvar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

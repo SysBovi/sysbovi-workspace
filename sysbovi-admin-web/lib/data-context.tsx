@@ -56,6 +56,24 @@ export interface Especialista {
   telefone?: string;
 }
 
+export type TipoMembro = 'VETERINARIO' | 'ZOOTECNISTA' | 'AGRONOMO' | 'TECNICO';
+
+export interface MembroEquipe {
+  id: string;
+  nome: string;
+  email: string;
+  tipo: TipoMembro;
+  telefone: string | null;
+  criadoEm: string;
+}
+
+export interface CreateMembroData {
+  nome: string;
+  email: string;
+  tipo: TipoMembro;
+  telefone?: string;
+}
+
 export interface CreateInsumoData {
   nome: string;
   tipo: 'VACINA' | 'SUPLEMENTO' | 'MEDICAMENTO' | 'MINERAL';
@@ -89,6 +107,13 @@ export interface HistoricoUsoItem {
   custoTotal: number;
 }
 
+export interface Pesagem {
+  id: string;
+  peso: number;
+  dataPesagem: string;
+  gmdCalculado: number | null;
+}
+
 interface DataContextValue {
   bovinos: Bovino[];
   pastos: Pasto[];
@@ -101,6 +126,7 @@ interface DataContextValue {
   recarregarInsumos: () => Promise<void>;
   addBovino: (data: CreateBovinoData) => Promise<void>;
   updateBovino: (id: string, data: UpdateBovinoData) => Promise<void>;
+  removerBovino: (id: string, motivo: 'INATIVO' | 'VENDIDO' | 'MORTO') => Promise<void>;
   addPasto: (data: CreatePastoData) => Promise<void>;
   updatePasto: (id: string, data: UpdatePastoData) => Promise<void>;
   removePasto: (id: string) => Promise<void>;
@@ -110,6 +136,14 @@ interface DataContextValue {
   adicionarEstoqueInsumo: (id: string, quantidade: number) => Promise<void>;
   usarInsumo: (id: string, data: UsarInsumoData) => Promise<void>;
   getHistoricoInsumo: (id: string) => Promise<HistoricoUsoItem[]>;
+  registrarPesagem: (bovinoId: string, peso: number, dataPesagem?: string) => Promise<void>;
+  getPesagens: (bovinoId: string) => Promise<Pesagem[]>;
+  setCustoDiarioPasto: (id: string, valorDiaria: number) => Promise<number>;
+  getCustoDiarioPasto: (id: string) => Promise<number | null>;
+  membrosEquipe: MembroEquipe[];
+  recarregarEquipe: () => Promise<void>;
+  adicionarMembroEquipe: (data: CreateMembroData) => Promise<void>;
+  removerMembroEquipe: (id: string) => Promise<void>;
   vincularEspecialista: (id: string) => void;
   desvincularEspecialista: (id: string) => void;
 }
@@ -239,6 +273,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [especialistasVinculados, setEspecialistasVinculados] = useState<Especialista[]>([]);
   const [especialistasDisponiveis, setEspecialistasDisponiveis] = useState<Especialista[]>([]);
+  const [membrosEquipe, setMembrosEquipe] = useState<MembroEquipe[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const recarregarBovinos = useCallback(async () => {
@@ -262,13 +297,20 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     } catch { }
   }, []);
 
+  const recarregarEquipe = useCallback(async () => {
+    try {
+      const data = await api.get<MembroEquipe[]>('/equipe');
+      setMembrosEquipe(data);
+    } catch { }
+  }, []);
+
   useEffect(() => {
     if (!user) return;
     if (!user.fazenda) return; // admin UA não tem tenant — não busca dados de fazenda
     setIsLoading(true);
-    Promise.all([recarregarBovinos(), recarregarPastos(), recarregarInsumos()])
+    Promise.all([recarregarBovinos(), recarregarPastos(), recarregarInsumos(), recarregarEquipe()])
       .finally(() => setIsLoading(false));
-  }, [user, recarregarBovinos, recarregarPastos, recarregarInsumos]);
+  }, [user, recarregarBovinos, recarregarPastos, recarregarInsumos, recarregarEquipe]);
 
   async function addBovino(data: CreateBovinoData) {
     await api.post('/bovinos', data);
@@ -277,6 +319,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   async function updateBovino(id: string, data: UpdateBovinoData) {
     await api.put(`/bovinos/${id}`, data);
+    await Promise.all([recarregarBovinos(), recarregarPastos()]);
+  }
+
+  async function removerBovino(id: string, motivo: 'INATIVO' | 'VENDIDO' | 'MORTO') {
+    await api.delete(`/bovinos/${id}`, { motivo });
     await Promise.all([recarregarBovinos(), recarregarPastos()]);
   }
 
@@ -324,6 +371,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     return api.get<HistoricoUsoItem[]>(`/insumos/${id}/historico`);
   }
 
+  async function registrarPesagem(bovinoId: string, peso: number, dataPesagem?: string) {
+    await api.post(`/bovinos/${bovinoId}/pesagens`, { peso, dataPesagem });
+    await recarregarBovinos();
+  }
+
+  async function getPesagens(bovinoId: string): Promise<Pesagem[]> {
+    return api.get<Pesagem[]>(`/bovinos/${bovinoId}/pesagens`);
+  }
+
+  async function setCustoDiarioPasto(id: string, valorDiaria: number): Promise<number> {
+    const res = await api.post<{ valorDiaria: number }>(`/pastos/${id}/custo-diario`, { valorDiaria });
+    return res?.valorDiaria ?? valorDiaria;
+  }
+
+  async function getCustoDiarioPasto(id: string): Promise<number | null> {
+    const res = await api.get<{ valorDiaria: number | null }>(`/pastos/${id}/custo-diario`);
+    return res.valorDiaria;
+  }
+
+  async function adicionarMembroEquipe(data: CreateMembroData) {
+    await api.post('/equipe', data);
+    await recarregarEquipe();
+  }
+
+  async function removerMembroEquipe(id: string) {
+    await api.delete(`/equipe/${id}`);
+    await recarregarEquipe();
+  }
+
   const vincularEspecialista = useCallback((id: string) => {
     setEspecialistasDisponiveis(prev => {
       const esp = prev.find(e => e.id === id);
@@ -353,6 +429,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       recarregarInsumos,
       addBovino,
       updateBovino,
+      removerBovino,
       addPasto,
       updatePasto,
       removePasto,
@@ -362,6 +439,14 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       adicionarEstoqueInsumo,
       usarInsumo,
       getHistoricoInsumo,
+      registrarPesagem,
+      getPesagens,
+      setCustoDiarioPasto,
+      getCustoDiarioPasto,
+      membrosEquipe,
+      recarregarEquipe,
+      adicionarMembroEquipe,
+      removerMembroEquipe,
       vincularEspecialista,
       desvincularEspecialista,
     }}>

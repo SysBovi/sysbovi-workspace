@@ -16,7 +16,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Empty } from "@/components/ui/empty"
 
 import Link from "next/link"
-
 import {
   Beef,
   TrendingUp,
@@ -293,7 +292,30 @@ export default function HomePage() {
       )}
 
       {/* ALERTAS */}
-      {/* ... mantém igual ... */}
+      {alertas.length > 0 && (
+        <div className="space-y-2">
+          <h2 className="font-semibold text-foreground">Alertas</h2>
+          {alertas.map(alerta => (
+            <Link
+              key={alerta.id}
+              href={alerta.href}
+              className={`flex items-start gap-3 p-4 rounded-xl border-l-4 shadow-sm ${
+                alerta.severity === "critical"
+                  ? "border-l-destructive bg-destructive/5"
+                  : "border-l-warning bg-warning/5"
+              }`}
+            >
+              <AlertTriangle className={`w-5 h-5 mt-0.5 shrink-0 ${
+                alerta.severity === "critical" ? "text-destructive" : "text-warning-foreground"
+              }`} />
+              <div>
+                <p className="font-medium text-sm text-foreground">{alerta.titulo}</p>
+                <p className="text-xs text-muted-foreground">{alerta.descricao}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* RESUMO FINANCEIRO */}
 

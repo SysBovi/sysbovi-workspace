@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from '../../database/entities/tenant.entity';
-import { Bovino } from '../../database/entities/bovino.entity';
+import { Bovino, StatusBovino } from '../../database/entities/bovino.entity';
 
 @Injectable()
 export class PlanoLimiteGuard implements CanActivate {
@@ -21,13 +21,14 @@ export class PlanoLimiteGuard implements CanActivate {
     });
 
     if (!tenant) throw new ForbiddenException('Tenant não encontrado.');
+    if (!tenant.plano) throw new ForbiddenException('Plano não configurado para este tenant.');
 
     const limiteBovinhos = tenant.plano.limiteBovinos;
 
     if (limiteBovinhos === null) return true;
 
     const totalAtual = await this.bovinosRepository.count({
-      where: { tenantId: user.tenantId, status: 'ATIVO' },
+      where: { tenantId: user.tenantId, status: StatusBovino.ATIVO },
     });
 
     if (totalAtual >= limiteBovinhos) {

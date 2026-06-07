@@ -1,33 +1,18 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
-
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('sysbovi_user');
-    if (!raw) return null;
-    return JSON.parse(raw).accessToken ?? null;
-  } catch {
-    return null;
-  }
-}
+export const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
 async function request<T>(
   method: string,
   endpoint: string,
   body?: unknown,
 ): Promise<T> {
-  const token = getToken();
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     method,
-    headers,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (response.status === 401) {
-    localStorage.removeItem('sysbovi_user');
     window.location.href = '/login';
     throw new Error('Sessão expirada.');
   }
@@ -37,7 +22,10 @@ async function request<T>(
     throw new Error(error.message ?? 'Erro na requisição.');
   }
 
-  if (response.status === 204) return undefined as T;
+  const contentType = response.headers.get('content-type');
+  if (response.status === 204 || !contentType?.includes('application/json')) {
+    return undefined as T;
+  }
   return response.json();
 }
 
@@ -46,5 +34,5 @@ export const api = {
   post: <T>(endpoint: string, body: unknown) => request<T>('POST', endpoint, body),
   put: <T>(endpoint: string, body: unknown) => request<T>('PUT', endpoint, body),
   patch: <T>(endpoint: string, body: unknown) => request<T>('PATCH', endpoint, body),
-  delete: <T>(endpoint: string) => request<T>('DELETE', endpoint),
+  delete: <T>(endpoint: string, body?: unknown) => request<T>('DELETE', endpoint, body),
 };

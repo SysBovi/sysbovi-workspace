@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { api } from './api';
+import { api, BASE_URL } from './api';
 
 export type UserRole = 'UP' | 'UE' | 'UA' | 'UC';
 
@@ -10,6 +10,7 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
+  planoNome?: string;
   avatar?: string;
   fazenda?: { id: string; nome: string };
 }
@@ -27,7 +28,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Mapeia o papel do backend para o role do frontend
 function papelToRole(papel: string): UserRole {
   switch (papel) {
     case 'ADMIN_FAZENDA': return 'UP';
@@ -36,6 +36,17 @@ function papelToRole(papel: string): UserRole {
     case 'UA':            return 'UA';
     default:              return 'UC';
   }
+}
+
+function mapUser(data: any): AuthUser {
+  return {
+    id: data.id,
+    name: data.nome,
+    email: data.email,
+    role: papelToRole(data.papel),
+    planoNome: data.planoNome,
+    fazenda: data.fazenda,
+  };
 }
 
 const ROLE_NAMES: Record<UserRole, string> = {
@@ -49,41 +60,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Restaura a sessão via cookie — raw fetch para não disparar redirect automático em 401
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('sysbovi_user');
-      if (raw) {
-        const stored = JSON.parse(raw);
-        if (stored.usuario) setUser(stored.usuario);
-      }
-    } catch {
-      localStorage.removeItem('sysbovi_user');
-    } finally {
-      setIsLoading(false);
-    }
+    fetch(`${BASE_URL}/auth/me`, { credentials: 'include' })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (data) setUser(mapUser(data)); })
+      .catch(() => {})
+      .finally(() => setIsLoading(false));
   }, []);
 
   async function login(email: string, password: string): Promise<boolean> {
     try {
-      const data = await api.post<{ accessToken: string; usuario: any }>(
+      const data = await api.post<{ usuario: any }>(
         '/auth/login',
         { email, senha: password },
       );
-
-      const authUser: AuthUser = {
-        id: data.usuario.id,
-        name: data.usuario.nome,
-        email: data.usuario.email,
-        role: papelToRole(data.usuario.papel),
-        fazenda: data.usuario.fazenda,
-      };
-
-      localStorage.setItem('sysbovi_user', JSON.stringify({
-        accessToken: data.accessToken,
-        usuario: authUser,
-      }));
-
-      setUser(authUser);
+      setUser(mapUser(data.usuario));
       return true;
     } catch {
       return false;
@@ -92,38 +84,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function loginAdmin(email: string, password: string): Promise<boolean> {
     try {
-      const data = await api.post<{ accessToken: string; admin: any }>(
+      const data = await api.post<{ admin: any }>(
         '/auth/admin/login',
         { email, senha: password },
       );
-
-      const authUser: AuthUser = {
-        id: data.admin.id,
-        name: data.admin.nome,
-        email: data.admin.email,
-        role: 'UA',
-      };
-
-      localStorage.setItem('sysbovi_user', JSON.stringify({
-        accessToken: data.accessToken,
-        usuario: authUser,
-      }));
-
-      setUser(authUser);
+      setUser(mapUser(data.admin));
       return true;
     } catch {
       return false;
     }
   }
 
-  function logout() {
-    localStorage.removeItem('sysbovi_user');
+  async function logout() {
+    try {
+      await api.post('/auth/logout', {});
+    } catch { /* token pode já ter expirado — prossegue com limpeza local */ }
     setUser(null);
     window.location.href = '/login';
   }
 
-  const canAccessVendas = user?.role === 'UP' || user?.role === 'UE' || user?.role === 'UA';
-  const canAccessEquipe = user?.role === 'UE' || user?.role === 'UA';
+  const canAccessVendas = (user?.role === 'UP' || user?.role === 'UE')
+    && ['PREMIUM', 'EMPRESARIAL'].includes(user?.planoNome ?? '');
+  const canAccessEquipe = (user?.role === 'UP' || user?.role === 'UE' || user?.role === 'UA')
+    && (user?.role === 'UA' || user?.planoNome === 'EMPRESARIAL');
 
   return (
     <AuthContext.Provider value={{

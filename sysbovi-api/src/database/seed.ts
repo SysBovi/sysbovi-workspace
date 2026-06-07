@@ -3,13 +3,13 @@ import * as bcrypt from 'bcrypt';
 import { AppDataSource } from './data-source';
 import { PlanoAssinatura } from './entities/plano-assinatura.entity';
 import { ParametroZootecnico } from './entities/parametro-zootecnico.entity';
-import { Tenant } from './entities/tenant.entity';
-import { Usuario } from './entities/usuario.entity';
+import { Tenant, StatusConta } from './entities/tenant.entity';
+import { Usuario, PapelUsuario } from './entities/usuario.entity';
 import { AdminUsuario } from './entities/admin-usuario.entity';
-import { LotePasto } from './entities/lote-pasto.entity';
-import { Bovino } from './entities/bovino.entity';
+import { LotePasto, MetodoCriacao, StatusOcupacao } from './entities/lote-pasto.entity';
+import { Bovino, StatusBovino, StatusSaudeBovino } from './entities/bovino.entity';
 import { Pesagem } from './entities/pesagem.entity';
-import { Insumo } from './entities/insumo.entity';
+import { Insumo, TipoInsumo } from './entities/insumo.entity';
 
 const SALT_ROUNDS = 10;
 
@@ -36,28 +36,28 @@ const USUARIOS_SEED = [
     nome: 'Proprietário Comum',
     email: 'comum@fazendademo.com',
     senha: 'comum123',
-    papel: 'ADMIN_FAZENDA' as const,
+    papel: PapelUsuario.ADMIN_FAZENDA,
     tenantFazenda: 'Fazenda Comum',
   },
   {
     nome: 'Proprietário Premium',
     email: 'premium@fazendademo.com',
     senha: 'premium123',
-    papel: 'ADMIN_FAZENDA' as const,
+    papel: PapelUsuario.ADMIN_FAZENDA,
     tenantFazenda: 'Fazenda Premium',
   },
   {
     nome: 'Proprietário Empresarial',
     email: 'empresarial@fazendademo.com',
     senha: 'empresarial123',
-    papel: 'ADMIN_FAZENDA' as const,
+    papel: PapelUsuario.ADMIN_FAZENDA,
     tenantFazenda: 'Fazenda Empresarial',
   },
   {
     nome: 'Especialista Demo',
     email: 'especialista@fazendademo.com',
     senha: 'espec123',
-    papel: 'ESPECIALISTA' as const,
+    papel: PapelUsuario.ESPECIALISTA,
     tenantFazenda: 'Fazenda Premium',
   },
 ];
@@ -87,17 +87,17 @@ const ADMIN_SEED = {
 // ─── Dados de demonstração (Fazenda Premium) ──────────────────────────────────
 
 const PASTOS_DEMO = [
-  { nome: 'Pasto A1 - Braquiária', capacidade: 40, areaHectares: 50.0, diasDescanso: 30, metodoCriacao: 'LIVRE_PASTO' as const },
-  { nome: 'Pasto B2 - Mombaça',    capacidade: 25, areaHectares: 30.0, diasDescanso: 28, metodoCriacao: 'LIVRE_PASTO' as const },
-  { nome: 'Pasto C3 - Tifton',     capacidade: 15, areaHectares: 20.0, diasDescanso: 25, metodoCriacao: 'LIVRE_PASTO' as const },
+  { nome: 'Pasto A1 - Braquiária', capacidade: 40, areaHectares: 50.0, diasDescanso: 30, metodoCriacao: MetodoCriacao.LIVRE_PASTO },
+  { nome: 'Pasto B2 - Mombaça',    capacidade: 25, areaHectares: 30.0, diasDescanso: 28, metodoCriacao: MetodoCriacao.LIVRE_PASTO },
+  { nome: 'Pasto C3 - Tifton',     capacidade: 15, areaHectares: 20.0, diasDescanso: 25, metodoCriacao: MetodoCriacao.LIVRE_PASTO },
 ];
 
 const INSUMOS_DEMO = [
-  { nome: 'Vacina Aftosa',         tipo: 'VACINA'      as const, unidade: 'dose', quantidadeAtual: 150, custoUnitario: 8.50,  nivelMinimo: 50,  validade: '2026-12-31' },
-  { nome: 'Sal Mineral Bovitrace', tipo: 'MINERAL'     as const, unidade: 'kg',   quantidadeAtual: 200, custoUnitario: 3.20,  nivelMinimo: 80,  validade: '2027-06-30' },
-  { nome: 'Ivermectina 1%',        tipo: 'MEDICAMENTO' as const, unidade: 'ml',   quantidadeAtual: 25,  custoUnitario: 12.00, nivelMinimo: 60,  validade: '2026-09-15' },
-  { nome: 'Suplemento Proteico',   tipo: 'SUPLEMENTO'  as const, unidade: 'kg',   quantidadeAtual: 85,  custoUnitario: 5.50,  nivelMinimo: 100, validade: '2026-08-01' },
-  { nome: 'Oxitetraciclina',       tipo: 'MEDICAMENTO' as const, unidade: 'frasco', quantidadeAtual: 12, custoUnitario: 45.00, nivelMinimo: 5,   validade: '2026-11-20' },
+  { nome: 'Vacina Aftosa',         tipo: TipoInsumo.VACINA,      unidade: 'dose',   quantidadeAtual: 150, custoUnitario: 8.50,  nivelMinimo: 50,  validade: '2026-12-31' },
+  { nome: 'Sal Mineral Bovitrace', tipo: TipoInsumo.MINERAL,     unidade: 'kg',     quantidadeAtual: 200, custoUnitario: 3.20,  nivelMinimo: 80,  validade: '2027-06-30' },
+  { nome: 'Ivermectina 1%',        tipo: TipoInsumo.MEDICAMENTO, unidade: 'ml',     quantidadeAtual: 25,  custoUnitario: 12.00, nivelMinimo: 60,  validade: '2026-09-15' },
+  { nome: 'Suplemento Proteico',   tipo: TipoInsumo.SUPLEMENTO,  unidade: 'kg',     quantidadeAtual: 85,  custoUnitario: 5.50,  nivelMinimo: 100, validade: '2026-08-01' },
+  { nome: 'Oxitetraciclina',       tipo: TipoInsumo.MEDICAMENTO, unidade: 'frasco', quantidadeAtual: 12,  custoUnitario: 45.00, nivelMinimo: 5,   validade: '2026-11-20' },
 ];
 
 // Bovinos: [brinco, raça, sexo, dataNascimento, pesoEntrada, pastoIndex, custoAcum, pesagens[]]
@@ -174,7 +174,7 @@ async function seed() {
         tenantRepo.create({
           nomeFazenda: t.nomeFazenda,
           planoId: plano.id,
-          statusConta: 'ATIVA',
+          statusConta: StatusConta.ATIVA,
           regiaoCotacao: t.regiaoCotacao,
         }),
       );
@@ -286,8 +286,8 @@ async function seed() {
           dataEntrada: new Date(b.dataNascimento),
           pesoEntrada: b.pesoEntrada,
           loteId,
-          status: 'ATIVO',
-          statusSaude: 'SAUDAVEL',
+          status: StatusBovino.ATIVO,
+          statusSaude: StatusSaudeBovino.SAUDAVEL,
           custoAcumuladoNutricao: b.custoAcumulado,
         }),
       );
@@ -310,10 +310,10 @@ async function seed() {
 
       // Atualiza statusOcupacao do lote se necessário
       if (loteId) {
-        const contagem = await bovinoRepo.count({ where: { loteId, tenantId: tenantPremium.id, status: 'ATIVO' } });
+        const contagem = await bovinoRepo.count({ where: { loteId, tenantId: tenantPremium.id, status: StatusBovino.ATIVO } });
         const lote = await loteRepo.findOneBy({ id: loteId });
         if (lote) {
-          lote.statusOcupacao = contagem >= lote.capacidade ? 'SUPERLOTADO' : 'NORMAL';
+          lote.statusOcupacao = contagem >= lote.capacidade ? StatusOcupacao.SUPERLOTADO : StatusOcupacao.NORMAL;
           await loteRepo.save(lote);
         }
       }

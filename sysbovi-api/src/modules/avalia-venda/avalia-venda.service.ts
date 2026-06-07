@@ -57,7 +57,7 @@ export class AvaliaVendaService {
 
   private async calcularRecomendacao(bovino: Bovino, pesoAtualKg: number, tenantId: string) {
     const idadeMeses = differenceInMonths(new Date(), new Date(bovino.dataNascimento));
-    const metodoCriacao = bovino.lote?.metodoCriacao ?? 'LIVRE_PASTO';
+    const metodoCriacao = bovino.lote?.metodoCriacao ?? MetodoCriacao.LIVRE_PASTO;
 
     const arrobasVendaveis = (pesoAtualKg * RENDIMENTO_CARCACA) / KG_POR_ARROBA;
     const custoAcumulado = Number(bovino.custoAcumuladoNutricao);

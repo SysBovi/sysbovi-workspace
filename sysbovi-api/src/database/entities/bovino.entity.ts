@@ -5,8 +5,18 @@ import { Tenant } from './tenant.entity';
 import { LotePasto } from './lote-pasto.entity';
 import { Pesagem } from './pesagem.entity';
 
-export type StatusBovino = 'ATIVO' | 'INATIVO' | 'VENDIDO' | 'MORTO';
-export type StatusSaudeBovino = 'SAUDAVEL' | 'EM_TRATAMENTO' | 'OBSERVACAO';
+export enum StatusBovino {
+  ATIVO        = 'ATIVO',
+  INATIVO      = 'INATIVO',
+  VENDIDO      = 'VENDIDO',
+  MORTO        = 'MORTO',
+}
+
+export enum StatusSaudeBovino {
+  SAUDAVEL      = 'SAUDAVEL',
+  EM_TRATAMENTO = 'EM_TRATAMENTO',
+  OBSERVACAO    = 'OBSERVACAO',
+}
 
 @Unique(['tenantId', 'brinco'])
 @Entity('bovinos')

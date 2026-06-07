@@ -3,7 +3,12 @@ import {
 } from 'typeorm';
 import { Tenant } from './tenant.entity';
 
-export type StatusPagamento = 'PAGO' | 'PENDENTE' | 'ATRASADO' | 'CANCELADO';
+export enum StatusPagamento {
+  PAGO      = 'PAGO',
+  PENDENTE  = 'PENDENTE',
+  ATRASADO  = 'ATRASADO',
+  CANCELADO = 'CANCELADO',
+}
 
 @Entity('faturas_saas')
 export class FaturaSaas {

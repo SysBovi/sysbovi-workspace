@@ -3,7 +3,12 @@ import {
 } from 'typeorm';
 import { Tenant } from './tenant.entity';
 
-export type TipoInsumo = 'VACINA' | 'SUPLEMENTO' | 'MEDICAMENTO' | 'MINERAL';
+export enum TipoInsumo {
+  VACINA      = 'VACINA',
+  SUPLEMENTO  = 'SUPLEMENTO',
+  MEDICAMENTO = 'MEDICAMENTO',
+  MINERAL     = 'MINERAL',
+}
 export type StatusInsumo = 'NORMAL' | 'BAIXO' | 'CRITICO';
 
 @Entity('insumos')

@@ -7,40 +7,6 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Home, Beef, TrendingUp, Package, MapPin, Bell, LogOut, Menu, Crown, Users, X } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { type UserRole } from "@/lib/auth-context"
-
-interface Permissions {
-  vendas: boolean
-  equipe: boolean
-}
-
-function getPermissions(role?: UserRole): Permissions {
-  switch (role) {
-    case "UP":
-      return {
-        vendas: true,
-        equipe: false,
-      }
-
-    case "UE":
-      return {
-        vendas: true,
-        equipe: true,
-      }
-
-    case "UA":
-      return {
-        vendas: true,
-        equipe: true,
-      }
-
-    default:
-      return {
-        vendas: false,
-        equipe: false,
-      }
-  }
-}
 
 const navItems = [
   { href: "/home", label: "Home", icon: Home },
@@ -74,24 +40,16 @@ function LoadingSkeleton() {
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, logout, getRoleName } = useAuth()
+  const { user, isLoading, logout, getRoleName, canAccessVendas, canAccessEquipe } = useAuth()
   const { insumos, pastos } = useData()
   const router = useRouter()
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const permissions = getPermissions(user?.role)
-
 
   const filteredNavItems = navItems.filter((item) => {
-    if (item.requiresVendas && !permissions.vendas) {
-      return false
-    }
-
-    if (item.requiresUE && !permissions.equipe) {
-      return false
-    }
-
+    if (item.requiresVendas && !canAccessVendas) return false
+    if (item.requiresUE && !canAccessEquipe) return false
     return true
   })
 

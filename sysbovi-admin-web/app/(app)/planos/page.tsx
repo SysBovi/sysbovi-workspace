@@ -1,16 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "@/lib/auth-context"
+import { api } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "sonner"
 import { Crown, Check, Building2, Sparkles, DollarSign, Beef, MapPin, Package, TrendingUp } from "lucide-react"
 
+interface TenantMe {
+  plano: { nome: string; precoMensal: number }
+}
+
 const planos = [
   {
-    id: "premium", nome: "Premium", preco: "R$ 149", periodo: "/mês",
+    id: "PREMIUM", nome: "Premium", preco: "R$ 149", periodo: "/mês",
     descricao: "Para fazendas de pequeno e médio porte",
     icon: Crown, color: "from-primary to-primary/80", popular: true,
     beneficios: [
@@ -23,7 +28,7 @@ const planos = [
     ],
   },
   {
-    id: "empresarial", nome: "Empresarial", preco: "R$ 349", periodo: "/mês",
+    id: "EMPRESARIAL", nome: "Empresarial", preco: "R$ 349", periodo: "/mês",
     descricao: "Para grandes fazendas e grupos",
     icon: Building2, color: "from-chart-3 to-chart-3/80", popular: false,
     beneficios: [
@@ -39,25 +44,42 @@ const planos = [
 ]
 
 export default function PlanosPage() {
-  const { user, getRoleName } = useAuth()
+  const { user } = useAuth()
+  const [planoAtual, setPlanoAtual] = useState<string | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user?.fazenda) return
+    api.get<TenantMe>("/tenants/me")
+      .then(res => setPlanoAtual(res.plano?.nome?.toUpperCase() ?? null))
+      .catch(() => {})
+  }, [user?.fazenda])
 
   const handleUpgrade = async (planoId: string) => {
     setLoadingPlan(planoId)
-    await new Promise(r => setTimeout(r, 1500))
-    toast.success("Solicitação enviada!", { description: "Nossa equipe entrará em contato em até 24h" })
-    setLoadingPlan(null)
+    try {
+      await api.post("/tenants/me/solicitar-upgrade", { planoDesejado: planoId })
+      toast.success("Solicitação enviada!", {
+        description: "Nossa equipe entrará em contato em até 24h para concluir a migração.",
+      })
+    } catch {
+      toast.error("Erro ao enviar solicitação", { description: "Tente novamente ou contate o suporte." })
+    } finally {
+      setLoadingPlan(null)
+    }
   }
 
-  const isCurrent = (id: string) => (id === "premium" && user?.role === "UP") || (id === "empresarial" && user?.role === "UE")
+  const isCurrent = (id: string) => planoAtual === id
 
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-foreground">Planos SYSBOVI</h1>
         <p className="text-muted-foreground mt-1">Escolha o plano ideal para sua fazenda</p>
-        {user && (
-          <Badge variant="outline" className="mt-3 bg-primary/5">Plano atual: {getRoleName()}</Badge>
+        {planoAtual && (
+          <Badge variant="outline" className="mt-3 bg-primary/5">
+            Plano atual: {planoAtual.charAt(0) + planoAtual.slice(1).toLowerCase()}
+          </Badge>
         )}
       </div>
 
@@ -106,9 +128,9 @@ export default function PlanosPage() {
                       : `bg-gradient-to-r ${plano.color} text-primary-foreground hover:opacity-90`
                   }`}
                 >
-                  {loadingPlan === plano.id ? (
-                    <><Spinner className="mr-2" />Processando...</>
-                  ) : current ? "Plano Atual" : "Fazer Upgrade"}
+                  {loadingPlan === plano.id
+                    ? <><Spinner className="mr-2" />Enviando...</>
+                    : current ? "Plano Atual" : "Fazer Upgrade"}
                 </button>
               </CardContent>
             </Card>

@@ -7,9 +7,14 @@ import { api } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Input } from "@/components/ui/input"
+import { Spinner } from "@/components/ui/spinner"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import Link from "next/link"
-import { ArrowLeft, Beef, Scale, Calendar, MapPin, Heart, TrendingUp, DollarSign } from "lucide-react"
+import { toast } from "sonner"
+import { ArrowLeft, Beef, Scale, Calendar, MapPin, Heart, TrendingUp, DollarSign, Plus, Activity } from "lucide-react"
 import { useState, useEffect } from "react"
+import type { Pesagem } from "@/lib/data-context"
 
 interface AvaliaVendaItem {
   bovinoId: string
@@ -31,10 +36,19 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function BovinoDetalhePage() {
   const params = useParams()
-  const { bovinos } = useData()
+  const { bovinos, registrarPesagem, getPesagens } = useData()
   const { canAccessVendas } = useAuth()
+
   const [isLoading, setIsLoading] = useState(true)
   const [avaliaVenda, setAvaliaVenda] = useState<AvaliaVendaItem | null>(null)
+  const [pesagens, setPesagens] = useState<Pesagem[]>([])
+  const [loadingPesagens, setLoadingPesagens] = useState(false)
+
+  // Dialog Nova Pesagem
+  const [dialogPesagem, setDialogPesagem] = useState(false)
+  const [novoPeso, setNovoPeso] = useState("")
+  const [novaData, setNovaData] = useState("")
+  const [salvandoPesagem, setSalvandoPesagem] = useState(false)
 
   const bovino = bovinos.find(b => b.id === params.id)
 
@@ -49,6 +63,39 @@ export default function BovinoDetalhePage() {
       .then(data => setAvaliaVenda(data.find(i => i.bovinoId === params.id) ?? null))
       .catch(() => {})
   }, [canAccessVendas, params.id])
+
+  useEffect(() => {
+    if (!params.id) return
+    setLoadingPesagens(true)
+    getPesagens(params.id as string)
+      .then(data => setPesagens(data))
+      .catch(() => setPesagens([]))
+      .finally(() => setLoadingPesagens(false))
+  }, [params.id, bovino?.pesoAtual])
+
+  async function handleRegistrarPesagem() {
+    if (!novoPeso || Number(novoPeso) <= 0) return
+    setSalvandoPesagem(true)
+    try {
+      await registrarPesagem(
+        params.id as string,
+        Number(novoPeso),
+        novaData || undefined,
+      )
+      const updated = await getPesagens(params.id as string)
+      setPesagens(updated)
+      toast.success("Pesagem registrada!", {
+        description: `${novoPeso} kg registrados com sucesso`,
+      })
+      setDialogPesagem(false)
+      setNovoPeso("")
+      setNovaData("")
+    } catch (e: any) {
+      toast.error(e?.message ?? "Erro ao registrar pesagem")
+    } finally {
+      setSalvandoPesagem(false)
+    }
+  }
 
   if (isLoading) return (
     <div className="space-y-6">
@@ -78,6 +125,7 @@ export default function BovinoDetalhePage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/rebanho" className="p-2 rounded-xl hover:bg-accent transition-colors shrink-0"><ArrowLeft className="w-5 h-5" /></Link>
         <div className="flex-1">
@@ -87,6 +135,7 @@ export default function BovinoDetalhePage() {
         <Badge variant="outline" className={`${statusColor(bovino.statusSaude)} text-sm px-3 py-1`}>{bovino.statusSaude}</Badge>
       </div>
 
+      {/* Peso e métricas */}
       <Card className="border-0 shadow-md">
         <CardContent className="p-6">
           <div className="flex items-center gap-4 mb-6">
@@ -109,6 +158,7 @@ export default function BovinoDetalhePage() {
         </CardContent>
       </Card>
 
+      {/* Informações de Saúde */}
       <Card className="border-0 shadow-md">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2"><Heart className="w-5 h-5 text-destructive" />Informações de Saúde</CardTitle>
@@ -130,6 +180,56 @@ export default function BovinoDetalhePage() {
         </CardContent>
       </Card>
 
+      {/* Histórico de Pesagens */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary" />Histórico de Pesagens
+            </CardTitle>
+            {canAccessVendas && (
+              <button
+                onClick={() => setDialogPesagem(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-4 h-4" />Nova Pesagem
+              </button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingPesagens ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
+            </div>
+          ) : pesagens.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Nenhuma pesagem registrada.</p>
+          ) : (
+            <div className="space-y-2">
+              {pesagens.slice(0, 10).map((p, i) => (
+                <div key={p.id} className={`flex items-center justify-between p-3 rounded-lg ${i === 0 ? "bg-primary/5 border border-primary/20" : "bg-muted/40"}`}>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{Number(p.peso).toFixed(1)} kg</p>
+                    <p className="text-xs text-muted-foreground">{new Date(p.dataPesagem).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                  <div className="text-right">
+                    {p.gmdCalculado != null ? (
+                      <p className={`text-sm font-medium ${Number(p.gmdCalculado) >= 0 ? "text-primary" : "text-destructive"}`}>
+                        {Number(p.gmdCalculado) >= 0 ? "+" : ""}{Number(p.gmdCalculado).toFixed(2)} kg/dia
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">—</p>
+                    )}
+                    {i === 0 && <p className="text-xs text-primary font-medium">Mais recente</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Análise Financeira */}
       {canAccessVendas && avaliaVenda && (
         <Card className="border-0 shadow-md">
           <CardHeader className="pb-3">
@@ -162,6 +262,56 @@ export default function BovinoDetalhePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog Nova Pesagem */}
+      <Dialog open={dialogPesagem} onOpenChange={setDialogPesagem}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Scale className="w-5 h-5 text-primary" />Nova Pesagem</DialogTitle>
+            <DialogDescription>{bovino.brinco} — Peso atual: {bovino.pesoAtual} kg</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2 px-1">
+            <div>
+              <label className="text-sm font-medium text-foreground">Peso (kg) *</label>
+              <Input
+                type="number"
+                min="1"
+                step="0.1"
+                value={novoPeso}
+                onChange={e => setNovoPeso(e.target.value)}
+                placeholder="Ex: 480"
+                className="mt-1.5 h-14 text-xl font-bold text-center"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Data da pesagem (opcional)</label>
+              <Input
+                type="date"
+                value={novaData}
+                onChange={e => setNovaData(e.target.value)}
+                className="mt-1.5 h-11"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Deixe em branco para usar a data de hoje.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setDialogPesagem(false)}
+              className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium border border-border bg-background hover:bg-accent transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleRegistrarPesagem}
+              disabled={!novoPeso || Number(novoPeso) <= 0 || salvandoPesagem}
+              className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {salvandoPesagem ? <><Spinner className="mr-1" />Salvando...</> : "Registrar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
