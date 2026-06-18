@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ─── API: lint + test ────────────────────────────────────────────────────────
+  api:
+    name: API (lint + test)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: sysbovi_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: sysbovi-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sysbovi-api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test com cobertura
+        run: npm run test:cov
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: ${{ secrets.POSTGRES_USER }}
+          DB_PASS: ${{ secrets.POSTGRES_PASSWORD }}
+          DB_NAME: sysbovi_db_test
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          JWT_EXPIRES_IN: 7d
+          NODE_ENV: test
+          PORT: 3001
+
+      - name: Upload relatório de cobertura — API
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-api
+          path: sysbovi-api/coverage/
+          retention-days: 7
+
+  # ─── Admin Web: lint + test + build ──────────────────────────────────────────
+  admin-web:
+    name: Admin Web (test + build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: sysbovi-admin-web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: sysbovi-admin-web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test com cobertura
+        run: npm run test:coverage
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+
+      - name: Upload relatório de cobertura — Admin Web
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-admin-web
+          path: sysbovi-admin-web/coverage/
+          retention-days: 7
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001/api
+
+  # ─── Docker: build e push das imagens (apenas na main) ──────────────────────
+  docker:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: [api, admin-web]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: read
+      packages: write  # necessário para push no GitHub Container Registry (GHCR)
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build e push — API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sysbovi-api
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/api:latest
+            ghcr.io/${{ github.repository }}/api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build e push — Admin Web
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sysbovi-admin-web
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/admin-web:latest
+            ghcr.io/${{ github.repository }}/admin-web:${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
