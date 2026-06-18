@@ -1,4 +1,10 @@
 # Define os donos das aprovações de código
-/sysbovi-pwa/      @frontend-sysbovi
-/sysbovi-api/      @backend-sysbovi
-/sysbovi-admin-web/ @frontend-sysbovi
+
+# O Fabiano é dono de TUDO na raiz e subpastas (incluindo docker-compose, gitignore, etc.)
+* @fabiano-pinto
+
+# As equipes continuam donas de suas respectivas pastas, mas você também está nelas
+/sysbovi-pwa/       @frontend-sysbovi @fabiano-pinto
+/sysbovi-api/       @backend-sysbovi @fabiano-pinto
+/sysbovi-admin-web/ @frontend-sysbovi @fabiano-pinto
+

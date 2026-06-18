@@ -1,1 +1,40 @@
-{ "name": "sysbovi-admin-web", "version": "1.0.0", "private": true }
+{
+  "name": "sysbovi-admin-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "geist": "^1.3.1",
+    "lucide-react": "^0.511.0",
+    "next": "^16.2.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sonner": "^2.0.3",
+    "tw-animate-css": "^1.2.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.7",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.8",
+    "eslint": "^9",
+    "eslint-config-next": "^16.2.6",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.1.7",
+    "typescript": "^5",
+    "vitest": "^4.1.7"
+  }
+}

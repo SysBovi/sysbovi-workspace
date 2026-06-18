@@ -1,6 +1,35 @@
+# Dependências
 node_modules/
+
+# Variáveis de ambiente (NUNCA commitar)
 .env
-.env.local
+.env.*
+!.env.example
+!.env.*.example
+
+# Build outputs
 dist/
+build/
 .next/
+out/
+
+# Banco de dados local
 *.db
+*.sqlite
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
