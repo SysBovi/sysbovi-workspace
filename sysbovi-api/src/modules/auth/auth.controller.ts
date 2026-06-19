@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -23,6 +24,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @ApiOperation({
     summary: 'Login de usuário da fazenda',
     description:
@@ -44,6 +46,7 @@ export class AuthController {
 
   @Post('admin/login')
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
   @ApiOperation({
     summary: 'Login do super administrador',
     description:

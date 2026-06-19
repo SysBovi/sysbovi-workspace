@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { differenceInMonths } from '../../common/utils/date.util';
@@ -68,7 +68,15 @@ export class BovinosService {
       dataEntrada: dto.dataEntrada ? new Date(dto.dataEntrada) : new Date(),
     });
 
-    const savedBovino = await this.bovinosRepository.save(bovino);
+    let savedBovino: Bovino;
+    try {
+      savedBovino = await this.bovinosRepository.save(bovino);
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        throw new ConflictException(`Já existe um animal com o brinco "${dto.brinco}" nesta fazenda.`);
+      }
+      throw err;
+    }
 
     await this.pesagensService.registrar(
       { peso: dto.pesoEntrada },

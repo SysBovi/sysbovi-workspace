@@ -37,7 +37,7 @@ export default function AdminLogin() {
 
     if (success) {
       toast.success("Login realizado!", { description: "Bem-vindo, Super Admin" })
-      router.replace("/home")
+      router.replace("/viewAdmin")
     } else {
       toast.error("Falha no login", { description: "Email ou senha incorretos" })
     }

@@ -1,13 +1,40 @@
 "use client"
 
+import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
+import { Skeleton } from "@/components/ui/skeleton"
 import { LayoutDashboard, Users, LifeBuoy, LogOut } from "lucide-react"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { user, isLoading, logout } = useAuth()
+
+  useEffect(() => {
+    if (isLoading) return
+    if (!user) router.replace("/admin-login")
+    else if (user.role !== "UA") router.replace("/login")
+  }, [user, isLoading, router])
+
+  if (isLoading || !user || user.role !== "UA") {
+    return (
+      <div className="min-h-screen flex bg-background">
+        <aside className="w-64 border-r border-border bg-card p-4 flex flex-col gap-3">
+          <Skeleton className="h-8 w-32 mb-4" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+          <Skeleton className="h-10 w-full rounded-lg" />
+        </aside>
+        <main className="flex-1 p-6">
+          <Skeleton className="h-8 w-48 mb-4" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex bg-background">

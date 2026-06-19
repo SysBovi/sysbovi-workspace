@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         '/auth/admin/login',
         { email, senha: password },
       );
-      setUser(mapUser(data.admin));
+      setUser({ ...mapUser(data.admin), role: 'UA' });
       return true;
     } catch {
       return false;
