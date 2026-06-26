@@ -15,7 +15,7 @@ const COOKIE_NAME = 'sysbovi_token';
   sameSite: 'strict' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: '/',
-};*/ //Alterado para ajudar no Deploy onde diz: O parâmetro sameSite: 'strict' diz para o navegador: "Só salve este cookie se o site de onde ele veio for EXATAMENTE o mesmo site em que o usuário está navegando".
+};*/ //Alterado por Fabiano para ajudar no Deploy onde diz: O parâmetro sameSite: 'strict' diz para o navegador: "Só salve este cookie se o site de onde ele veio for EXATAMENTE o mesmo site em que o usuário está navegando".
 
 const isProduction = process.env.NODE_ENV === 'production';
 
