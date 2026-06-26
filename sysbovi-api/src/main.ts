@@ -20,12 +20,42 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({
+  /*app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+  });*/ //comentado por Fabiano - Adaptação para Vercel e Render
+
+  const allowedOrigins = [
+    'http://localhost:3000',
+    process.env.FRONTEND_URL, // Pega o link configurado no Render
+  ].filter(Boolean); // Remove valores nulos ou indefinidos
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Se não houver origin (ex: chamadas internas ou ferramentas de teste como Swagger/Postman)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Verifica se a origem está na lista permitida OU se é um subdomínio da Vercel do seu time
+      const isAllowed = allowedOrigins.includes(origin);
+      const isVercelDeploy = origin.endsWith('.vercel.app') && origin.includes('sysbovi');
+
+      if (isAllowed || isVercelDeploy) {
+        callback(null, true);
+      } else {
+        callback(new Error('Bloqueado pelo CORS do SysBovi'));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Mantém ativo para o envio dos cookies HttpOnly
   });
+
+
+
 
   // ─── Swagger ─────────────────────────────────────────────────────────────────
   const swaggerConfig = new DocumentBuilder()
