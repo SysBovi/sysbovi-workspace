@@ -9,13 +9,24 @@ import { LoginDto } from './dto/login.dto';
 
 const COOKIE_NAME = 'sysbovi_token';
 
-const cookieOptions = {
+/*const cookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: '/',
+};*/ //Alterado para ajudar no Deploy onde diz: O parâmetro sameSite: 'strict' diz para o navegador: "Só salve este cookie se o site de onde ele veio for EXATAMENTE o mesmo site em que o usuário está navegando".
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+const cookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax', // O TypeScript vai adorar isso aqui!
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: '/',
 };
+
 
 @ApiTags('Auth')
 @Controller('auth')
